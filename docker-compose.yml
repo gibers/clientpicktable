@@ -1,0 +1,24 @@
+
+services:
+
+  postgresql:
+    container_name: clientpicktable
+    image: postgres:15.13
+    mem_limit: 512m
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=clientpicktable
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=pwd
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d clientpicktable"]
+      interval: 5s
+      timeout: 2s
+      retries: 60
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+
+volumes:
+  postgres_data:

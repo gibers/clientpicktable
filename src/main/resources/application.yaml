@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: clientpicktable
+
+supabase:
+  url: https://jncefchkxwzhcyqqqatt.supabase.co
+  api-key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuY2VmY2hreHd6aGN5cXFxYXR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1NjMzNjEsImV4cCI6MjA3NzEzOTM2MX0._Zpvxcv6Cm5nN04EAl8lr6tpDOcy9PBDB08MOqMXC70
