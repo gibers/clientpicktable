@@ -7,13 +7,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.RequestScope;
 
-import com.hackpicktable.clientpicktable.dtos.BookATableRequestDto;
+import com.hackpicktable.clientpicktable.dtos.BookATableForSupabaseRequestDto;
 import com.hackpicktable.clientpicktable.dtos.ReservationResponseDto;
 import com.hackpicktable.clientpicktable.dtos.mappers.ReservationResponseMapper;
 import com.hackpicktable.clientpicktable.entities.Establishment;
@@ -56,7 +57,7 @@ public class ReservationParamRequest {
 		this.lastPatronymicUsedRepository = lastPatronymicUsedRepository;
 	}
 
-	public ReservationResponseDto setParam(Establishment establishmentFromDB, Patronymic patronymicToUse, int numberOfPeople, LocalTime startTime,
+	public ReservationResponseDto setParamAndLaunch(Establishment establishmentFromDB, Patronymic patronymicToUse, int numberOfPeople, LocalTime startTime,
 			LocalDate dateReservation) {
 		this.establishmentToBook = establishmentFromDB;
 		this.patronymicToUse = patronymicToUse;
@@ -73,8 +74,8 @@ public class ReservationParamRequest {
 		Iterator<Tisch> iterator = tablesWithCapacityGte.iterator();
 		do {
 			Tisch tableWithCapacityGte = iterator.next();
-			BookATableRequestDto.Reservation reservation = prepareReservation(tableWithCapacityGte.getId());
-			BookATableRequestDto request = buildRequest(reservation);
+			BookATableForSupabaseRequestDto.Reservation reservation = prepareReservation(tableWithCapacityGte.getId());
+			BookATableForSupabaseRequestDto request = buildRequest(reservation);
 			reservationResponseDto = bookATableFromSupabase.addAReservation(request);
 			saveReservationResponseInDB(reservationResponseDto, tableWithCapacityGte);
 		} while (iterator.hasNext() && !Objects.requireNonNull(reservationResponseDto).getSuccess());
@@ -85,11 +86,14 @@ public class ReservationParamRequest {
 	}
 
 	private void incrementPatronymicId() {
-		LastPatronymicUsed.LastPatronymicUsedBuilder lastPatronymicUsedBuilder = LastPatronymicUsed.builder();
-		lastPatronymicUsedBuilder.establishment(this.establishmentToBook);
-		lastPatronymicUsedBuilder.lastPatronymicUsed(this.patronymicToUse);
-		LastPatronymicUsed lastPatronymicUsed = lastPatronymicUsedBuilder.build();
-		lastPatronymicUsedRepository.save(lastPatronymicUsed);
+		Optional<LastPatronymicUsed> lastPatronymicUsed = this.lastPatronymicUsedRepository.findById(this.establishmentToBook.getId());
+		// update table lastPatronymicUsed if present, insert if not.
+		lastPatronymicUsed.ifPresentOrElse(x -> x.setLastPatronymicUsed(this.patronymicToUse), () -> {
+			LastPatronymicUsed.LastPatronymicUsedBuilder lastPatronymicUsedBuilder = LastPatronymicUsed.builder();
+			lastPatronymicUsedBuilder.establishment(this.establishmentToBook);
+			lastPatronymicUsedBuilder.lastPatronymicUsed(this.patronymicToUse);
+			lastPatronymicUsedRepository.save(lastPatronymicUsedBuilder.build());
+		});
 	}
 
 	private void saveReservationResponseInDB(ReservationResponseDto reservationResponseDto, Tisch tableWithCapacityGte) {
@@ -100,8 +104,8 @@ public class ReservationParamRequest {
 		reservationResponseRepository.save(reservationResponse);
 	}
 
-	private BookATableRequestDto.Reservation prepareReservation(UUID tableId) {
-		BookATableRequestDto.Reservation.ReservationBuilder reservationBuilder = BookATableRequestDto.Reservation.builder();
+	private BookATableForSupabaseRequestDto.Reservation prepareReservation(UUID tableId) {
+		BookATableForSupabaseRequestDto.Reservation.ReservationBuilder reservationBuilder = BookATableForSupabaseRequestDto.Reservation.builder();
 		reservationBuilder.date(this.dateReservation);
 		reservationBuilder.startTime(this.startTime);
 		reservationBuilder.tableId(tableId);
@@ -111,12 +115,12 @@ public class ReservationParamRequest {
 		return reservationBuilder.build();
 	}
 
-	private BookATableRequestDto buildRequest(BookATableRequestDto.Reservation reservation) {
-		BookATableRequestDto.BookATableRequestDtoBuilder builder = BookATableRequestDto.builder();
+	private BookATableForSupabaseRequestDto buildRequest(BookATableForSupabaseRequestDto.Reservation reservation) {
+		BookATableForSupabaseRequestDto.BookATableForSupabaseRequestDtoBuilder builder = BookATableForSupabaseRequestDto.builder();
 		builder.slug(establishmentToBook.getSlug());
 		builder.establishmentId(establishmentToBook.getId());
 
-		BookATableRequestDto.Customer.CustomerBuilder customerBuilder = BookATableRequestDto.Customer.builder();
+		BookATableForSupabaseRequestDto.Customer.CustomerBuilder customerBuilder = BookATableForSupabaseRequestDto.Customer.builder();
 		customerBuilder.email(patronymicToUse.getEmail());
 		customerBuilder.firstName(patronymicToUse.getFirstname());
 		customerBuilder.lastName(patronymicToUse.getName());

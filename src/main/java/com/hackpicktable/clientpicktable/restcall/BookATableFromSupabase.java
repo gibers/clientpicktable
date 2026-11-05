@@ -6,7 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClient;
 
 import com.hackpicktable.clientpicktable.config.SupabaseProperties;
-import com.hackpicktable.clientpicktable.dtos.BookATableRequestDto;
+import com.hackpicktable.clientpicktable.dtos.BookATableForSupabaseRequestDto;
 import com.hackpicktable.clientpicktable.dtos.ReservationResponseDto;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,7 +22,7 @@ public class BookATableFromSupabase {
 		this.restClient = restClientBuilder.baseUrl(supabaseProperties.url()).build();
 	}
 
-	public ReservationResponseDto addAReservation(BookATableRequestDto request) {
+	public ReservationResponseDto addAReservation(BookATableForSupabaseRequestDto request) {
 		ResponseEntity<ReservationResponseDto> response = restClient.post()
 				.uri(uriBuilder -> uriBuilder
 						.path("/functions/v1/create-reservation")
@@ -41,7 +41,7 @@ public class BookATableFromSupabase {
 		if (response.getStatusCode().isError()) {
 			responseDto.setSuccess(false);
 			if (request.getReservation() != null) {
-				BookATableRequestDto.Reservation requestReservation = request.getReservation();
+				BookATableForSupabaseRequestDto.Reservation requestReservation = request.getReservation();
 				responseDto.setReservation(ReservationResponseDto.Reservation.builder()
 						.date(requestReservation.getDate())
 						.startTime(requestReservation.getStartTime())

@@ -1,6 +1,5 @@
 package com.hackpicktable.clientpicktable.repositories;
 
-import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,7 +9,4 @@ import com.hackpicktable.clientpicktable.entities.LastPatronymicUsed;
 
 @Repository
 public interface LastPatronymicUsedRepository extends JpaRepository<LastPatronymicUsed, UUID> {
-
-	Optional<LastPatronymicUsed> findByEstablishment_id(UUID establishmentId);
-
 }
