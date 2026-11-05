@@ -52,8 +52,8 @@ public class ReservationSettings {
     @JsonProperty("max_booking_days")
     private Integer maxBookingDays;
 
-    @ManyToOne
-    @JoinColumn(name = "establishment_id")
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "establishment_id", nullable = false)
     @JsonIgnore
     private Establishment establishment;
 

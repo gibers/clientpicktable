@@ -1,16 +1,18 @@
 package com.hackpicktable.clientpicktable.impl;
 
 import java.util.List;
-import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
 import com.hackpicktable.clientpicktable.dtos.TischDto;
 import com.hackpicktable.clientpicktable.dtos.mappers.TischMapper;
+import com.hackpicktable.clientpicktable.entities.Establishment;
 import com.hackpicktable.clientpicktable.entities.Tisch;
+import com.hackpicktable.clientpicktable.repositories.EstablishmentRepository;
 import com.hackpicktable.clientpicktable.repositories.TischRepository;
 import com.hackpicktable.clientpicktable.restcall.AllTablesFromSupabase;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,24 +24,34 @@ public class RefreshTablesInDBImpl {
 	private final AllTablesFromSupabase allTablesFromSupabase;
 	private final TischMapper tischMapper;
 	private final TischRepository tischRepository;
+	private final EstablishmentRepository establishmentRepository;
 
-	public List<TischDto> refreshTables(String establishmentName) {
+	@Transactional
+	public List<TischDto> refreshTables(String establishmentSlug) {
+		// 1. get the establishment from DB:
+		Establishment establishmentZaoCafe = establishmentRepository.findBySlug(establishmentSlug).orElseThrow();
+		// 2. call the remote supabase Endpoint from that establishmentId:
+		List<TischDto> allTischDto = allTablesFromSupabase.getAllTables(establishmentZaoCafe.getId());
+		stopProcessIfSupabaseFailed(establishmentSlug, allTischDto);
+		// 3. empty table Tisch in DB, before to insert new data:
+		tischRepository.deleteAllByEstablishment(establishmentZaoCafe);
+		// 4. save all TischDto in DB:
+		saveAllTischDto(allTischDto);
+		return allTischDto;
+	}
 
-		// todo: 1. récupérer l'UUID depuis la table establishment au lieu de ce hardcode:
-		UUID uuidFromZaoCafe = UUID.fromString("35e5c927-7eac-4338-b315-67dc7dc23bf7");
-
-		List<TischDto> allTables = allTablesFromSupabase.getAllTables(uuidFromZaoCafe);
-		if (allTables == null || allTables.isEmpty()) {
-			log.error("No tables found for this establishment in Supabase");
-			return null;
+	private void stopProcessIfSupabaseFailed(String establishmentName, List<TischDto> listTischDto) {
+		if (listTischDto == null || listTischDto.isEmpty()) {
+			log.error("list Tisch not found in Supabase for {}", establishmentName);
+			throw new RuntimeException("Establishment not found in Supabase");
 		}
-		// 1. empty table Tisch in DB:
-		tischRepository.deleteAll();
+	}
 
-		List<Tisch> listTisch = allTables.stream().map(tischMapper::toDto).toList();
-
+	private void saveAllTischDto(List<TischDto> allTischDto) {
+		List<Tisch> listTisch = allTischDto.stream()
+				.map(tischMapper::toDto)
+				.toList();
 		tischRepository.saveAll(listTisch);
-		return allTables;
 	}
 
 }

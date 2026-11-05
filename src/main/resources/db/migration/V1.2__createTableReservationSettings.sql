@@ -7,7 +7,7 @@ CREATE TABLE public.reservation_settings
     updated_at                      timestamp(6) with time zone,
     min_booking_days                integer,
     max_booking_days                integer,
-    establishment_id                uuid references public.establishment(id),
+    establishment_id                uuid not null references public.establishment(id),
     allow_same_day_cancellation     boolean,
     min_people                      integer,
     max_people                      integer,

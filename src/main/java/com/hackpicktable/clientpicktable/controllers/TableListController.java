@@ -21,9 +21,9 @@ public class TableListController {
 
 	private final RefreshTablesInDBImpl refreshTablesInDBImpl;
 
-	@GetMapping(value = "/{establishmentName}")
-	public List<TischDto> getAllTables(@PathVariable String establishmentName) {
-		return refreshTablesInDBImpl.refreshTables(establishmentName);
+	@GetMapping(value = "/{establishmentSlug}")
+	public List<TischDto> getAllTables(@PathVariable String establishmentSlug) {
+		return refreshTablesInDBImpl.refreshTables(establishmentSlug);
 	}
 
 }

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import com.hackpicktable.clientpicktable.config.SupabaseProperties;
-import com.hackpicktable.clientpicktable.entities.Tisch;
+import com.hackpicktable.clientpicktable.dtos.EstablishmentDTO;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,17 +23,20 @@ public class EstablishmentFromSupabase {
 		this.restClient = restClientBuilder.baseUrl(supabaseProperties.url()).build();
 	}
 
-	public List<Tisch> getEstablishment() {
-		return restClient.get()
+	public EstablishmentDTO getEstablishment(String establishmentName) {
+		List<EstablishmentDTO> establishments = restClient.get()
 				.uri(uriBuilder -> uriBuilder
 						.path("/rest/v1/establishments")
 						.queryParam("select", "*")
-						.queryParam("slug", "eq.zao-cafe")
+						.queryParam("slug", "eq." + establishmentName)
 						.queryParam("is_active", "eq.true")
+						.queryParam("limit", 1)
 						.build())
 				.header("apikey", supabaseProperties.apiKey())
 				.retrieve()
-				.body(new ParameterizedTypeReference<>() {});
+				.body(new ParameterizedTypeReference<List<EstablishmentDTO>>() {});
+
+		return establishments == null ? null : establishments.stream().findFirst().orElse(null);
 	}
 
 }

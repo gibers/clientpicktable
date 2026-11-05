@@ -1,12 +1,14 @@
 package com.hackpicktable.clientpicktable.dtos;
 
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.time.OffsetDateTime;
-import java.util.UUID;
 
 @Getter
 @Setter
@@ -32,6 +34,7 @@ public class TischDto {
     private OffsetDateTime createdAt;
 
     @JsonProperty("establishment_id")
+    @NotNull
     private UUID establishmentId;
 
     @JsonProperty("is_bookable")
