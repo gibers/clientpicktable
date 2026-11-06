@@ -1,8 +1,44 @@
 
 services:
 
+  app:
+    image: ghcr.io/gibers/clientpicktable:latest
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresql:5432/clientpicktable
+    ports:
+      - "8080:8080"
+    tty: true
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/info || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+  app-local:
+    image: clientpicktable:0.0.2-SNAPSHOT
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresql:5432/clientpicktable
+    ports:
+      - "8080:8080"
+    tty: true
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/info || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
   postgresql:
-    container_name: clientpicktable
+    container_name: db-postgresql
     image: postgres:15.13
     mem_limit: 512m
     ports:

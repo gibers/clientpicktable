@@ -2,6 +2,7 @@ package com.hackpicktable.clientpicktable.impl;
 
 import java.util.Optional;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import com.hackpicktable.clientpicktable.dtos.BookATableRequestDto;
@@ -25,7 +26,7 @@ public class ReservationAddImpl {
 	private final EstablishmentRepository establishmentRepository;
 	private final LastPatronymicUsedRepository lastPatronymicUsedRepository;
 	private final PatronymicRepository patronymicRepository;
-	private final ReservationParamRequest reservationParamRequest;
+	private final ObjectProvider<ReservationParamRequest> reservationParamRequestProvider;
 
 	@Transactional
 	public ReservationResponseDto bookAReservation(String establishmentSlug, BookATableRequestDto bookATableRequestDto) {
@@ -38,7 +39,7 @@ public class ReservationAddImpl {
 				.map(x -> x.getLastPatronymicUsed().getId() + 1).orElse(1L);
 		Patronymic patronymicToUse = patronymicRepository.findById(nextPatronymicToUse).orElseThrow();
 		// 4. book a table:
-		return reservationParamRequest.setParamAndLaunch(
+		return reservationParamRequestProvider.getObject().setParamAndLaunch(
 				establishmentFromDB, patronymicToUse, bookATableRequestDto.getNumberOfPeople(), bookATableRequestDto.getStartTime(),
 				bookATableRequestDto.getDateReservation());
 	}

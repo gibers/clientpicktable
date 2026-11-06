@@ -11,8 +11,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.annotation.RequestScope;
 
 import com.hackpicktable.clientpicktable.dtos.BookATableForSupabaseRequestDto;
 import com.hackpicktable.clientpicktable.dtos.ReservationResponseDto;
@@ -30,7 +31,7 @@ import com.hackpicktable.clientpicktable.restcall.BookATableFromSupabase;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
-@RequestScope
+@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 @Slf4j
 public class ReservationParamRequest {
 
