@@ -69,7 +69,8 @@ public class ReservationParamRequest {
 	}
 
 	private ReservationResponseDto loopOnAllTablesUntilSuccess() {
-		List<Tisch> tablesWithCapacityGte = tischRepository.findAllByCapacityGreaterThanEqualAndBookableTrue(this.numberOfPeople)
+		List<Tisch> tablesWithCapacityGte =
+				tischRepository.findAllByEstablishmentAndCapacityGreaterThanEqualAndBookableTrue(this.establishmentToBook, this.numberOfPeople)
 				.stream().sorted(Comparator.comparing(Tisch::getCapacity)).toList();
 		ReservationResponseDto reservationResponseDto;
 		Iterator<Tisch> iterator = tablesWithCapacityGte.iterator();

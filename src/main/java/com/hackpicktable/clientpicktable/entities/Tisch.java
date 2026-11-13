@@ -82,7 +82,7 @@ public class Tisch {
     @JsonProperty("zone_id")
     private UUID zoneId;
 
-    @Column(name = "display_order", nullable = false)
+    @Column(name = "display_order")
     @JsonProperty("display_order")
     private Integer displayOrder;
 }

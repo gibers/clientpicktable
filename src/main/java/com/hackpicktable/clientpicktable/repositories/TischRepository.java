@@ -10,7 +10,7 @@ import com.hackpicktable.clientpicktable.entities.Tisch;
 
 public interface TischRepository extends JpaRepository<Tisch, UUID> {
 
-	List<Tisch> findAllByCapacityGreaterThanEqualAndBookableTrue(int capacity);
+	List<Tisch> findAllByEstablishmentAndCapacityGreaterThanEqualAndBookableTrue(Establishment establishment,int capacity);
 
 	void deleteAllByEstablishment(Establishment establishment);
 

@@ -1,8 +1,12 @@
 package com.hackpicktable.clientpicktable.impl;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+
 import org.springframework.stereotype.Service;
 
-import com.hackpicktable.clientpicktable.dtos.EstablishmentDTO;
+import com.hackpicktable.clientpicktable.dtos.EstablishmentDto;
 import com.hackpicktable.clientpicktable.dtos.mappers.EstablishmentMapper;
 import com.hackpicktable.clientpicktable.entities.Establishment;
 import com.hackpicktable.clientpicktable.repositories.EstablishmentRepository;
@@ -20,9 +24,9 @@ public class RefreshEstablishmentInDBImpl {
 	private final EstablishmentRepository establishmentRepository;
 	private final EstablishmentMapper establishmentMapper;
 
-	public EstablishmentDTO refreshTablesInDB(String establishmentName) {
+	public EstablishmentDto refreshEstablishmentInDB(String establishmentName) {
 		// 1. call remote Supabase.
-		EstablishmentDTO establishmentDto = establishmentFromSupabase.getEstablishment(establishmentName);
+		EstablishmentDto establishmentDto = establishmentFromSupabase.getEstablishmentBySlug(establishmentName);
 		stopProcessIfSupabaseFailed(establishmentName, establishmentDto);
 		// 2. empty table Establishment only if supabase did not fail.
 		establishmentRepository.deleteByName(establishmentName);
@@ -32,7 +36,17 @@ public class RefreshEstablishmentInDBImpl {
 		return establishmentDto;
 	}
 
-	private void stopProcessIfSupabaseFailed(String establishmentName, EstablishmentDTO establishmentDto) {
+	void refreshEstablishmentInDBForMissings(List<UUID> establishmentIds) {
+		establishmentIds.stream()
+				.map(x -> establishmentFromSupabase.getEstablishmentById(x))
+				.filter(Objects::nonNull)
+				.forEach(establishmentDto -> {
+					Establishment entity = establishmentMapper.toEntity(establishmentDto);
+					establishmentRepository.save(entity);
+				});
+	}
+
+	private void stopProcessIfSupabaseFailed(String establishmentName, EstablishmentDto establishmentDto) {
 		// I don't think supabase will return a null, defensive code.
 		if (establishmentDto == null) {
 			log.error("Establishment not found in Supabase for {}", establishmentName);

@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.hackpicktable.clientpicktable.dtos.EstablishmentDTO;
+import com.hackpicktable.clientpicktable.dtos.EstablishmentDto;
 import com.hackpicktable.clientpicktable.impl.RefreshEstablishmentInDBImpl;
 
 import lombok.RequiredArgsConstructor;
@@ -20,8 +20,8 @@ public class EstablishmentController {
 	private final RefreshEstablishmentInDBImpl refreshTablesInDBImpl;
 
 	@GetMapping(value = "/{establishmentName}")
-	public EstablishmentDTO refreshEstablishmentInDB(@PathVariable String establishmentName) {
-		return refreshTablesInDBImpl.refreshTablesInDB(establishmentName);
+	public EstablishmentDto refreshEstablishmentInDB(@PathVariable String establishmentName) {
+		return refreshTablesInDBImpl.refreshEstablishmentInDB(establishmentName);
 	}
 
 }

@@ -1,13 +1,14 @@
 package com.hackpicktable.clientpicktable.restcall;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import com.hackpicktable.clientpicktable.config.SupabaseProperties;
-import com.hackpicktable.clientpicktable.dtos.EstablishmentDTO;
+import com.hackpicktable.clientpicktable.dtos.EstablishmentDto;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,8 +24,8 @@ public class EstablishmentFromSupabase {
 		this.restClient = restClientBuilder.baseUrl(supabaseProperties.url()).build();
 	}
 
-	public EstablishmentDTO getEstablishment(String establishmentName) {
-		List<EstablishmentDTO> establishments = restClient.get()
+	public EstablishmentDto getEstablishmentBySlug(String establishmentName) {
+		List<EstablishmentDto> establishments = restClient.get()
 				.uri(uriBuilder -> uriBuilder
 						.path("/rest/v1/establishments")
 						.queryParam("select", "*")
@@ -34,7 +35,23 @@ public class EstablishmentFromSupabase {
 						.build())
 				.header("apikey", supabaseProperties.apiKey())
 				.retrieve()
-				.body(new ParameterizedTypeReference<List<EstablishmentDTO>>() {});
+				.body(new ParameterizedTypeReference<List<EstablishmentDto>>() {});
+
+		return establishments == null ? null : establishments.stream().findFirst().orElse(null);
+	}
+
+	public EstablishmentDto getEstablishmentById(UUID establishmentId) {
+		List<EstablishmentDto> establishments = restClient.get()
+				.uri(uriBuilder -> uriBuilder
+						.path("/rest/v1/establishments")
+						.queryParam("select", "*")
+						.queryParam("id", "eq." + establishmentId)
+						.queryParam("is_active", "eq.true")
+						.queryParam("limit", 1)
+						.build())
+				.header("apikey", supabaseProperties.apiKey())
+				.retrieve()
+				.body(new ParameterizedTypeReference<List<EstablishmentDto>>() {});
 
 		return establishments == null ? null : establishments.stream().findFirst().orElse(null);
 	}

@@ -15,7 +15,7 @@ CREATE TABLE public.tisch
     assignment_priority integer not null,
     updated_at          timestamp(6) with time zone not null,
     zone_id             uuid,
-    display_order       integer not null
+    display_order       integer
 );
 
 ALTER TABLE public.tisch OWNER TO "user";

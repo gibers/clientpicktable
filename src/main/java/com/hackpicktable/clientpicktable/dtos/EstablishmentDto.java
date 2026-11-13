@@ -12,7 +12,7 @@ import tools.jackson.databind.JsonNode;
 @Getter
 @Setter
 @NoArgsConstructor
-public class EstablishmentDTO {
+public class EstablishmentDto {
 
     @JsonProperty("id")
     private UUID id;

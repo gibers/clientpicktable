@@ -16,7 +16,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.http.MediaType;
 
-import com.hackpicktable.clientpicktable.dtos.EstablishmentDTO;
+import com.hackpicktable.clientpicktable.dtos.EstablishmentDto;
 import com.hackpicktable.clientpicktable.impl.RefreshEstablishmentInDBImpl;
 
 @WebMvcTest(EstablishmentController.class)
@@ -32,12 +32,12 @@ class EstablishmentControllerIntegrationTest {
     void getEstablishmentRefreshesAndReturnsEstablishment() throws Exception {
         String establishmentName = "zao-cafe";
         UUID establishmentId = UUID.fromString("6e10b641-2212-4efc-8ed7-c890d54f3f90");
-        EstablishmentDTO establishment = new EstablishmentDTO();
+        EstablishmentDto establishment = new EstablishmentDto();
         establishment.setId(establishmentId);
         establishment.setName("Zao Cafe");
         establishment.setSlug(establishmentName);
 
-        given(refreshEstablishmentInDB.refreshTablesInDB(establishmentName)).willReturn(establishment);
+        given(refreshEstablishmentInDB.refreshEstablishmentInDB(establishmentName)).willReturn(establishment);
 
         mockMvc.perform(get("/establishment/{establishmentName}", establishmentName))
                 .andExpect(status().isOk())
@@ -46,6 +46,6 @@ class EstablishmentControllerIntegrationTest {
                 .andExpect(jsonPath("$.name").value("Zao Cafe"))
                 .andExpect(jsonPath("$.slug").value(establishmentName));
 
-        verify(refreshEstablishmentInDB).refreshTablesInDB(establishmentName);
+        verify(refreshEstablishmentInDB).refreshEstablishmentInDB(establishmentName);
     }
 }
