@@ -1,5 +1,8 @@
 package com.hackpicktable.clientpicktable.controllers;
 
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +25,11 @@ public class ReservationSettingsController {
 	@GetMapping(value = "/{establishmentSlug}")
 	public ReservationSettingsDto refreshReservationSettings(@PathVariable String establishmentSlug) {
 		return refreshReservationSettingsImpl.refreshReservationSettingsImpl(establishmentSlug);
+	}
+
+	@GetMapping(value = "/all")
+	public List<UUID> refreshAllReservationSettings() {
+		return refreshReservationSettingsImpl.refreshAllReservationSettingsImpl();
 	}
 
 }

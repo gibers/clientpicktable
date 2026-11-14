@@ -5,7 +5,6 @@ import java.time.LocalTime;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.hackpicktable.clientpicktable.dtos.BookATableRequestDto;
@@ -25,7 +24,7 @@ public class ReservationScheduler {
 
     private final ReservationAddImpl reservationAdd;
 
-    @Scheduled(fixedDelay = INTERVAL_MILLIS, initialDelay = INITIAL_DELAY_MILLIS)
+//    @Scheduled(fixedDelay = INTERVAL_MILLIS, initialDelay = INITIAL_DELAY_MILLIS)
     public void bookReservation() {
         LocalTime startTime1 = LocalTime.of(11, 0);
         LocalTime startTime2 = LocalTime.of(11, 30);

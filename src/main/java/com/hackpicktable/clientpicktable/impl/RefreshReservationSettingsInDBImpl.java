@@ -1,5 +1,11 @@
 package com.hackpicktable.clientpicktable.impl;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Stream;
+
 import org.springframework.stereotype.Service;
 
 import com.hackpicktable.clientpicktable.dtos.ReservationSettingsDto;
@@ -52,6 +58,40 @@ public class RefreshReservationSettingsInDBImpl {
 		if (!violations.isEmpty()) {
 			throw new ConstraintViolationException(violations);
 		}
+	}
+
+	@Transactional
+	public List<UUID> refreshAllReservationSettingsImpl() {
+		// 1. retrieve all establishments from DB
+		List<Establishment> establishmentsFromDB = establishmentRepository.findAll();
+		// 2. retrieve all reservation settings from Supabase
+		Map<Establishment, ReservationSettingsDto> reservationSettingsDtoMap = new HashMap<>();
+		establishmentsFromDB.forEach(establishment ->
+				reservationSettingsDtoMap.computeIfAbsent(establishment,
+						(e) -> reservationSettingsFromSupabase.getReservationSettings(e.getId())));
+		// 3.save each reservationSettings in DB
+		Stream<Map.Entry<Establishment, ReservationSettingsDto>> entryStream =
+				reservationSettingsDtoMap.entrySet().stream().filter(entry -> entry.getValue() != null);
+		saveEachInDB(entryStream);
+		// 4. return list of establishments not found in Supabase (should be empty, otherwise, we can't book a table for those establishments)
+		return reservationSettingsDtoMap.entrySet().stream().filter(entry -> entry.getValue() == null)
+				.map(x -> x.getKey().getId())
+				.peek(x -> log.warn("Establishment not found in Supabase for {}", x))
+				.toList();
+	}
+
+	private void saveEachInDB(Stream<Map.Entry<Establishment, ReservationSettingsDto>> entryStream) {
+		entryStream.forEach(entry -> {
+			var violations = validator.validate(entry.getValue());
+			if (!violations.isEmpty()) {
+				throw new ConstraintViolationException(violations);
+			}
+			log.debug("try to delete in reservation_settings for establishment {} saved", entry.getKey().getId());
+			reservationSettingsRepository.deleteByEstablishment(entry.getKey());
+			ReservationSettings reservationSettingsEntity = reservationSettingsMapper.toEntity(entry.getValue());
+			log.debug("Reservation settings for establishment {} saved", entry.getKey().getId());
+			reservationSettingsRepository.save(reservationSettingsEntity);
+		});
 	}
 
 }
