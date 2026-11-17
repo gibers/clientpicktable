@@ -9,6 +9,8 @@ import com.hackpicktable.clientpicktable.entities.ReservationSettings;
 
 public interface ReservationSettingsRepository extends JpaRepository<ReservationSettings, UUID> {
 
+	ReservationSettings findByEstablishment(Establishment establishment);
+
 	void deleteByEstablishment(Establishment establishment);
 
 }

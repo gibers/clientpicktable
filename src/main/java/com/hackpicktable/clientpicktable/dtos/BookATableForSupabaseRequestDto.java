@@ -2,6 +2,7 @@ package com.hackpicktable.clientpicktable.dtos;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -51,5 +52,16 @@ public class BookATableForSupabaseRequestDto {
         private Integer numberOfChildren;
         private Boolean hasStroller;
         private String terracePreference;
+        private CustomAnswers customAnswers;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class CustomAnswers {
+        private String question;
+        private List<String> answers;
     }
 }

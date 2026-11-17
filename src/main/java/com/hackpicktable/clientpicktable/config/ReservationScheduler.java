@@ -2,14 +2,17 @@ package com.hackpicktable.clientpicktable.config;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.stereotype.Component;
 
 import com.hackpicktable.clientpicktable.dtos.BookATableRequestDto;
+import com.hackpicktable.clientpicktable.dtos.ReservationResponseDto;
 import com.hackpicktable.clientpicktable.impl.ReservationAddImpl;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,7 +43,14 @@ public class ReservationScheduler {
                 .build();
 
         log.info("Running scheduled reservation for establishment {}", establishmentSlug);
+
         reservationAdd.bookAReservation(establishmentSlug, request);
+    }
+
+    @PostConstruct
+    public void bookReservation2() {
+        List<ReservationResponseDto> reservationResponseDtos = reservationAdd.bookAReservationForAllEstablishment();
+        log.info("reservation booked: {}", reservationResponseDtos);
     }
 
     private LocalTime getRandomStartTime(LocalTime... startTimes) {

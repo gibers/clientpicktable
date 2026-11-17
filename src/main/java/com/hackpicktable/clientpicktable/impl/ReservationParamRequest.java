@@ -2,7 +2,6 @@ package com.hackpicktable.clientpicktable.impl;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -28,12 +27,18 @@ import com.hackpicktable.clientpicktable.repositories.ReservationResponseReposit
 import com.hackpicktable.clientpicktable.repositories.TischRepository;
 import com.hackpicktable.clientpicktable.restcall.BookATableFromSupabase;
 
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 @Slf4j
 public class ReservationParamRequest {
+
+	public static final List<String> BLOCKING_MESSAGES_TIME = List.of(
+			"Cet horaire n'est plus disponible en ligne", "Créneau horaire invalide ou inactif", "Cet horaire a atteint sa limite de 6 personnes");
+	public static final List<String> BLOCKING_MESSAGES_TOOMANYRESERVATION = List.of(
+			"Trop de réservations ont été faites depuis cet appareil. Merci de contacter directement le restaurant.");
 
 	private final TischRepository tischRepository;
 	private final BookATableFromSupabase bookATableFromSupabase;
@@ -47,6 +52,7 @@ public class ReservationParamRequest {
 	private LocalDate dateReservation;
 	private LocalTime startTime;
 	private int numberOfPeople;
+	private List<Tisch> tablesListForThatCapacity;
 
 	public ReservationParamRequest (TischRepository tischRepository, BookATableFromSupabase bookATableFromSupabase,
 			ReservationResponseMapper reservationResponseMapper, ReservationResponseRepository reservationResponseRepository,
@@ -58,33 +64,37 @@ public class ReservationParamRequest {
 		this.lastPatronymicUsedRepository = lastPatronymicUsedRepository;
 	}
 
+	@Transactional
 	public ReservationResponseDto setParamAndLaunch(Establishment establishmentFromDB, Patronymic patronymicToUse, int numberOfPeople, LocalTime startTime,
-			LocalDate dateReservation) {
+			LocalDate dateReservation, List<Tisch> tablesListForThatCapacity) {
 		this.establishmentToBook = establishmentFromDB;
 		this.patronymicToUse = patronymicToUse;
 		this.numberOfPeople = numberOfPeople;
 		this.startTime = startTime;
 		this.dateReservation = dateReservation;
+		this.tablesListForThatCapacity = tablesListForThatCapacity;
 		return this.loopOnAllTablesUntilSuccess();
 	}
 
 	private ReservationResponseDto loopOnAllTablesUntilSuccess() {
-		List<Tisch> tablesWithCapacityGte =
-				tischRepository.findAllByEstablishmentAndCapacityGreaterThanEqualAndBookableTrue(this.establishmentToBook, this.numberOfPeople)
-				.stream().sorted(Comparator.comparing(Tisch::getCapacity)).toList();
 		ReservationResponseDto reservationResponseDto;
-		Iterator<Tisch> iterator = tablesWithCapacityGte.iterator();
+		Iterator<Tisch> iterator = tablesListForThatCapacity.iterator();
 		do {
 			Tisch tableWithCapacityGte = iterator.next();
 			BookATableForSupabaseRequestDto.Reservation reservation = prepareReservation(tableWithCapacityGte.getId());
 			BookATableForSupabaseRequestDto request = buildRequest(reservation);
 			reservationResponseDto = bookATableFromSupabase.addAReservation(request);
 			saveReservationResponseInDB(reservationResponseDto, tableWithCapacityGte);
-		} while (iterator.hasNext() && !Objects.requireNonNull(reservationResponseDto).getSuccess());
+		} while (iterator.hasNext() && !Objects.requireNonNull(reservationResponseDto).getSuccess() && !blockingMessage(reservationResponseDto.getErrorMessage()));
 		if(Objects.requireNonNull(reservationResponseDto).getSuccess()) {
 			incrementPatronymicId();
 		}
 		return reservationResponseDto;
+	}
+
+	// return true if message is blocking. With this message, we don't need to retry with another table
+	private boolean blockingMessage(String errorMessage) {
+		return BLOCKING_MESSAGES_TIME.contains(errorMessage) || BLOCKING_MESSAGES_TOOMANYRESERVATION.contains(errorMessage);
 	}
 
 	private void incrementPatronymicId() {
@@ -114,6 +124,17 @@ public class ReservationParamRequest {
 		reservationBuilder.numberOfPeople(this.numberOfPeople);
 		reservationBuilder.hasStroller(false);
 		reservationBuilder.terracePreference("indoor");
+
+		BookATableForSupabaseRequestDto.CustomAnswers.CustomAnswersBuilder customAnswersBuilder = BookATableForSupabaseRequestDto.CustomAnswers.builder();
+		if (this.establishmentToBook.getSlug().equals("le-pont-de-brent")) {
+			customAnswersBuilder.question("Quel menu souhaitez-vous ?");
+			customAnswersBuilder.answers(List.of("Le menu de midi"));
+		} else if (this.establishmentToBook.getSlug().equals("chez-seb")) {
+			customAnswersBuilder.question("Avez-vous une allergie ou un régime particulier ?");
+			customAnswersBuilder.answers(List.of("Non"));
+		}
+		reservationBuilder.customAnswers(customAnswersBuilder.build());
+
 		return reservationBuilder.build();
 	}
 
