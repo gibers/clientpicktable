@@ -47,7 +47,7 @@ public class ReservationScheduler {
         reservationAdd.bookAReservation(establishmentSlug, request);
     }
 
-    @PostConstruct
+//    @PostConstruct
     public void bookReservation2() {
         List<ReservationResponseDto> reservationResponseDtos = reservationAdd.bookAReservationForAllEstablishment();
         log.info("reservation booked: {}", reservationResponseDtos);

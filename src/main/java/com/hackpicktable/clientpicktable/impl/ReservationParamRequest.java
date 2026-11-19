@@ -24,7 +24,6 @@ import com.hackpicktable.clientpicktable.entities.ReservationResponse;
 import com.hackpicktable.clientpicktable.entities.Tisch;
 import com.hackpicktable.clientpicktable.repositories.LastPatronymicUsedRepository;
 import com.hackpicktable.clientpicktable.repositories.ReservationResponseRepository;
-import com.hackpicktable.clientpicktable.repositories.TischRepository;
 import com.hackpicktable.clientpicktable.restcall.BookATableFromSupabase;
 
 import jakarta.transaction.Transactional;
@@ -36,11 +35,10 @@ import lombok.extern.slf4j.Slf4j;
 public class ReservationParamRequest {
 
 	public static final List<String> BLOCKING_MESSAGES_TIME = List.of(
-			"Cet horaire n'est plus disponible en ligne", "Créneau horaire invalide ou inactif", "Cet horaire a atteint sa limite de 6 personnes");
+			"Cet horaire n'est plus disponible en ligne", "Créneau horaire invalide ou inactif", "Cet horaire a atteint sa limite de", "Cet horaire a atteint sa limite de réservations");
 	public static final List<String> BLOCKING_MESSAGES_TOOMANYRESERVATION = List.of(
 			"Trop de réservations ont été faites depuis cet appareil. Merci de contacter directement le restaurant.");
 
-	private final TischRepository tischRepository;
 	private final BookATableFromSupabase bookATableFromSupabase;
 	private final ReservationResponseMapper reservationResponseMapper;
 	private final ReservationResponseRepository reservationResponseRepository;
@@ -54,10 +52,9 @@ public class ReservationParamRequest {
 	private int numberOfPeople;
 	private List<Tisch> tablesListForThatCapacity;
 
-	public ReservationParamRequest (TischRepository tischRepository, BookATableFromSupabase bookATableFromSupabase,
+	public ReservationParamRequest (BookATableFromSupabase bookATableFromSupabase,
 			ReservationResponseMapper reservationResponseMapper, ReservationResponseRepository reservationResponseRepository,
 			LastPatronymicUsedRepository lastPatronymicUsedRepository) {
-		this.tischRepository = tischRepository;
 		this.bookATableFromSupabase = bookATableFromSupabase;
 		this.reservationResponseMapper = reservationResponseMapper;
 		this.reservationResponseRepository = reservationResponseRepository;
@@ -94,7 +91,7 @@ public class ReservationParamRequest {
 
 	// return true if message is blocking. With this message, we don't need to retry with another table
 	private boolean blockingMessage(String errorMessage) {
-		return BLOCKING_MESSAGES_TIME.contains(errorMessage) || BLOCKING_MESSAGES_TOOMANYRESERVATION.contains(errorMessage);
+		return BLOCKING_MESSAGES_TIME.stream().anyMatch(errorMessage::contains) || BLOCKING_MESSAGES_TOOMANYRESERVATION.contains(errorMessage);
 	}
 
 	private void incrementPatronymicId() {

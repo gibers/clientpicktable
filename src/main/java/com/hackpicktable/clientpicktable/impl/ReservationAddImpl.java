@@ -78,7 +78,6 @@ public class ReservationAddImpl {
 	}
 
 	public List<ReservationResponseDto> bookAReservationForAllEstablishment() {
-
 		List<ReservationResponseDto> reservationResponseDtoResult = new ArrayList<>();
 		// 1. Retrieve establishments from DB that have at least one table.
 		List<Establishment> establishmentsFromDB = tischRepository.findDistinctEstablishments();
@@ -89,7 +88,7 @@ public class ReservationAddImpl {
 		Map<Establishment, LinkedHashMap<Integer, List<Tisch>>> mapEstablishmentCapacities = getCapacity(establishmentsFromDB,
 				listCapacityOrder);
 		mapEstablishmentCapacities.forEach((establishment, mapCapacityTablesForThatEstablishment) -> {
-			if (!establishment.getSlug().equals("vally")) return;
+//			if (!establishment.getSlug().equals("vally")) return;
 
 			Patronymic patronymicToUse = getPatronymicToUse(establishment);
 
@@ -144,7 +143,7 @@ public class ReservationAddImpl {
 		// we return a fake ParamReservationLoop, in order to avoid the NPE on method:
 		// {@link #conditionStopFor(List, ParamReservationLoop, ReservationResponseDto)}.
 		if (reservationResponseDto.getSuccess()) return new ParamReservationLoop(1, 1);
-		if (BLOCKING_MESSAGES_TIME.contains(reservationResponseDto.getErrorMessage())) {
+		if (BLOCKING_MESSAGES_TIME.stream().anyMatch(reservationResponseDto.getErrorMessage()::contains)) {
 			return new ParamReservationLoop(0, initState.startTimeIndex + 1);
 		}
 		if (initState.capacityIndex >= numberOfDistinctCapacity -1) {

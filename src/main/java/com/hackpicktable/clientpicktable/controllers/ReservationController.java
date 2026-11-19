@@ -1,5 +1,7 @@
 package com.hackpicktable.clientpicktable.controllers;
 
+import java.util.List;
+
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,6 +26,11 @@ public class ReservationController {
 	@PostMapping(value = "/book/{establishmentName}")
 	public ReservationResponseDto addAReservation(@PathVariable String establishmentName, @RequestBody BookATableRequestDto request) {
 		return reservationAddImpl.bookAReservation(establishmentName, request);
+	}
+
+	@PostMapping(value = "/book-all")
+	public List<ReservationResponseDto> bookOneReservationInAllEstablishment() {
+		return reservationAddImpl.bookAReservationForAllEstablishment();
 	}
 
 }
