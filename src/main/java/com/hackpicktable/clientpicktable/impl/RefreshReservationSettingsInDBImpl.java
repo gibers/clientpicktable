@@ -64,12 +64,12 @@ public class RefreshReservationSettingsInDBImpl {
 	public List<UUID> refreshAllReservationSettingsImpl() {
 		// 1. retrieve all establishments from DB
 		List<Establishment> establishmentsFromDB = establishmentRepository.findAll();
-		// 2. retrieve all reservation settings from Supabase
+		// 2. for each establishment, retrieve all reservation_settings from Supabase
 		Map<Establishment, ReservationSettingsDto> reservationSettingsDtoMap = new HashMap<>();
 		establishmentsFromDB.forEach(establishment ->
 				reservationSettingsDtoMap.computeIfAbsent(establishment,
 						(e) -> reservationSettingsFromSupabase.getReservationSettings(e.getId())));
-		// 3.save each reservationSettings in DB
+		// 3.save each reservation_settings in DB
 		Stream<Map.Entry<Establishment, ReservationSettingsDto>> entryStream =
 				reservationSettingsDtoMap.entrySet().stream().filter(entry -> entry.getValue() != null);
 		saveEachInDB(entryStream);

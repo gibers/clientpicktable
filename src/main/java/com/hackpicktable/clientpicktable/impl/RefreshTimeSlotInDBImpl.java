@@ -36,7 +36,7 @@ public class RefreshTimeSlotInDBImpl {
 
 		Map<UUID, List<TimeSlotDto>> timeSlotsByEstablishment = allTimeSlot.stream()
 				.collect(Collectors.groupingBy(TimeSlotDto::getEstablishmentId));
-		log.debug("Number establishment from supabase: {}", timeSlotsByEstablishment.keySet().size());
+		log.debug("Number establishment from supabase: {}", timeSlotsByEstablishment.size());
 
 		List<UUID> missingEstablishmentIdsCall1 = getMissingEstablishmentIds(timeSlotsByEstablishment);
 		log.debug("Number establishment missing in DB: {}", missingEstablishmentIdsCall1.size());

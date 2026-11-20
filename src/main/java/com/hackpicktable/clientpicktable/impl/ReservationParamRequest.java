@@ -62,7 +62,7 @@ public class ReservationParamRequest {
 	}
 
 	@Transactional
-	public ReservationResponseDto setParamAndLaunch(Establishment establishmentFromDB, Patronymic patronymicToUse, int numberOfPeople, LocalTime startTime,
+	public ReservationResponse setParamAndLaunch(Establishment establishmentFromDB, Patronymic patronymicToUse, int numberOfPeople, LocalTime startTime,
 			LocalDate dateReservation, List<Tisch> tablesListForThatCapacity) {
 		this.establishmentToBook = establishmentFromDB;
 		this.patronymicToUse = patronymicToUse;
@@ -73,20 +73,21 @@ public class ReservationParamRequest {
 		return this.loopOnAllTablesUntilSuccess();
 	}
 
-	private ReservationResponseDto loopOnAllTablesUntilSuccess() {
+	private ReservationResponse loopOnAllTablesUntilSuccess() {
 		ReservationResponseDto reservationResponseDto;
+		ReservationResponse reservationResponse;
 		Iterator<Tisch> iterator = tablesListForThatCapacity.iterator();
 		do {
 			Tisch tableWithCapacityGte = iterator.next();
 			BookATableForSupabaseRequestDto.Reservation reservation = prepareReservation(tableWithCapacityGte.getId());
 			BookATableForSupabaseRequestDto request = buildRequest(reservation);
 			reservationResponseDto = bookATableFromSupabase.addAReservation(request);
-			saveReservationResponseInDB(reservationResponseDto, tableWithCapacityGte);
+			reservationResponse = saveReservationResponseInDB(reservationResponseDto, tableWithCapacityGte);
 		} while (iterator.hasNext() && !Objects.requireNonNull(reservationResponseDto).getSuccess() && !blockingMessage(reservationResponseDto.getErrorMessage()));
 		if(Objects.requireNonNull(reservationResponseDto).getSuccess()) {
 			incrementPatronymicId();
 		}
-		return reservationResponseDto;
+		return reservationResponse;
 	}
 
 	// return true if message is blocking. With this message, we don't need to retry with another table
@@ -105,12 +106,12 @@ public class ReservationParamRequest {
 		});
 	}
 
-	private void saveReservationResponseInDB(ReservationResponseDto reservationResponseDto, Tisch tableWithCapacityGte) {
+	private ReservationResponse saveReservationResponseInDB(ReservationResponseDto reservationResponseDto, Tisch tableWithCapacityGte) {
 		ReservationResponse reservationResponse = reservationResponseMapper.toEntity(reservationResponseDto);
 		reservationResponse.setEstablishment(this.establishmentToBook);
 		reservationResponse.setTisch(tableWithCapacityGte);
 		reservationResponse.setPatronymic(this.patronymicToUse);
-		reservationResponseRepository.save(reservationResponse);
+		return reservationResponseRepository.save(reservationResponse);
 	}
 
 	private BookATableForSupabaseRequestDto.Reservation prepareReservation(UUID tableId) {

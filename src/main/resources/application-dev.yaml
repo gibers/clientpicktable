@@ -12,3 +12,4 @@ logging:
   level:
     com.hackpicktable.clientpicktable.impl.RefreshTimeSlotInDBImpl: DEBUG
     com.hackpicktable.clientpicktable.impl.RefreshReservationSettingsInDBImpl: DEBUG
+    com.hackpicktable.clientpicktable.impl.ReservationAddImpl: DEBUG

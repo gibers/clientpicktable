@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hackpicktable.clientpicktable.dtos.BookATableRequestDto;
-import com.hackpicktable.clientpicktable.dtos.ReservationResponseDto;
+import com.hackpicktable.clientpicktable.entities.ReservationResponse;
 import com.hackpicktable.clientpicktable.impl.ReservationAddImpl;
 
 import lombok.RequiredArgsConstructor;
@@ -24,12 +24,12 @@ public class ReservationController {
 	private final ReservationAddImpl reservationAddImpl;
 
 	@PostMapping(value = "/book/{establishmentName}")
-	public ReservationResponseDto addAReservation(@PathVariable String establishmentName, @RequestBody BookATableRequestDto request) {
-		return reservationAddImpl.bookAReservation(establishmentName, request);
+	public ReservationResponse addAReservation(@PathVariable String establishmentName, @RequestBody BookATableRequestDto request) {
+		return reservationAddImpl.bookAReservation(establishmentName);
 	}
 
 	@PostMapping(value = "/book-all")
-	public List<ReservationResponseDto> bookOneReservationInAllEstablishment() {
+	public List<ReservationResponse> bookOneReservationInAllEstablishment() {
 		return reservationAddImpl.bookAReservationForAllEstablishment();
 	}
 

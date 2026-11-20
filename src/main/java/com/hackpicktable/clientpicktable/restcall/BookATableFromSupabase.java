@@ -35,6 +35,7 @@ public class BookATableFromSupabase {
 
 		ReservationResponseDto responseDto = response.getBody();
 		if (responseDto == null) {
+			log.error("Response body from supabase is null when we book a reservation");
 			responseDto = new ReservationResponseDto();
 		}
 		responseDto.setHttpStatus(response.getStatusCode().value());

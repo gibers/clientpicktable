@@ -27,6 +27,7 @@ public class ReservationSettingsController {
 		return refreshReservationSettingsImpl.refreshReservationSettingsImpl(establishmentSlug);
 	}
 
+	// return the settings of establishment not found in supabase. Should be empty.
 	@GetMapping(value = "/all")
 	public List<UUID> refreshAllReservationSettings() {
 		return refreshReservationSettingsImpl.refreshAllReservationSettingsImpl();

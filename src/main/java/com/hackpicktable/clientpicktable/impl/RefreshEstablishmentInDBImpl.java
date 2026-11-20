@@ -38,7 +38,7 @@ public class RefreshEstablishmentInDBImpl {
 
 	void refreshEstablishmentInDBForMissings(List<UUID> establishmentIds) {
 		establishmentIds.stream()
-				.map(x -> establishmentFromSupabase.getEstablishmentById(x))
+				.map(establishmentFromSupabase::getEstablishmentById)
 				.filter(Objects::nonNull)
 				.forEach(establishmentDto -> {
 					Establishment entity = establishmentMapper.toEntity(establishmentDto);

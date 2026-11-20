@@ -18,6 +18,7 @@ public class TimeSlotController {
 
 	private final RefreshTimeSlotInDBImpl refreshTablesInDBImpl;
 
+	// fill out the table time_slot and establishment.
 	@PutMapping(value = "/all")
 	public List<TimeSlotDto> refreshAllTimeSlotInDB() {
 		return refreshTablesInDBImpl.refreshAllTimeSlotInDB();
