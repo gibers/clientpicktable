@@ -6,8 +6,7 @@ CREATE TABLE public.previous_reservation
     interval_with_previous  integer NOT NULL,
     success                 boolean NOT NULL,
     param_reservation_state json NOT NULL,
-    list_start_time         time[],
-    index_previous_tisch	integer
+    list_start_time         time[]
 );
 
 CREATE TABLE public.previous_tisch

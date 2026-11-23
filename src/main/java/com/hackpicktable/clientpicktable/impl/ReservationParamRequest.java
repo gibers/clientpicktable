@@ -2,7 +2,6 @@ package com.hackpicktable.clientpicktable.impl;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -35,7 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ReservationParamRequest {
 
 	public static final List<String> BLOCKING_MESSAGES_TIME = List.of(
-			"Cet horaire n'est plus disponible en ligne", "Créneau horaire invalide ou inactif", "Cet horaire a atteint sa limite de", "Cet horaire a atteint sa limite de réservations");
+			"Cet horaire n'est plus disponible en ligne", "Créneau horaire invalide ou inactif", "Cet horaire a atteint sa limite de");
 	public static final List<String> BLOCKING_MESSAGES_TOOMANYRESERVATION = List.of(
 			"Trop de réservations ont été faites depuis cet appareil. Merci de contacter directement le restaurant.");
 
@@ -49,8 +48,7 @@ public class ReservationParamRequest {
 
 	private LocalDate dateReservation;
 	private LocalTime startTime;
-	private int numberOfPeople;
-	private List<Tisch> tablesListForThatCapacity;
+	private Tisch tableToBookOn;
 
 	public ReservationParamRequest (BookATableFromSupabase bookATableFromSupabase,
 			ReservationResponseMapper reservationResponseMapper, ReservationResponseRepository reservationResponseRepository,
@@ -62,37 +60,25 @@ public class ReservationParamRequest {
 	}
 
 	@Transactional
-	public ReservationResponse setParamAndLaunch(Establishment establishmentFromDB, Patronymic patronymicToUse, int numberOfPeople, LocalTime startTime,
-			LocalDate dateReservation, List<Tisch> tablesListForThatCapacity) {
+	public ReservationResponse setParamAndLaunch(Establishment establishmentFromDB, Patronymic patronymicToUse, LocalTime startTime,
+			LocalDate dateReservation, Tisch tableToBookOn) {
 		this.establishmentToBook = establishmentFromDB;
 		this.patronymicToUse = patronymicToUse;
-		this.numberOfPeople = numberOfPeople;
 		this.startTime = startTime;
 		this.dateReservation = dateReservation;
-		this.tablesListForThatCapacity = tablesListForThatCapacity;
-		return this.loopOnAllTablesUntilSuccess();
+		this.tableToBookOn = tableToBookOn;
+		return this.bookOnThatTable();
 	}
 
-	private ReservationResponse loopOnAllTablesUntilSuccess() {
-		ReservationResponseDto reservationResponseDto;
-		ReservationResponse reservationResponse;
-		Iterator<Tisch> iterator = tablesListForThatCapacity.iterator();
-		do {
-			Tisch tableWithCapacityGte = iterator.next();
-			BookATableForSupabaseRequestDto.Reservation reservation = prepareReservation(tableWithCapacityGte.getId());
-			BookATableForSupabaseRequestDto request = buildRequest(reservation);
-			reservationResponseDto = bookATableFromSupabase.addAReservation(request);
-			reservationResponse = saveReservationResponseInDB(reservationResponseDto, tableWithCapacityGte);
-		} while (iterator.hasNext() && !Objects.requireNonNull(reservationResponseDto).getSuccess() && !blockingMessage(reservationResponseDto.getErrorMessage()));
+	private ReservationResponse bookOnThatTable() {
+		BookATableForSupabaseRequestDto.Reservation reservation = prepareReservation(tableToBookOn.getId());
+		BookATableForSupabaseRequestDto request = buildRequest(reservation);
+		ReservationResponseDto reservationResponseDto = bookATableFromSupabase.addAReservation(request);
+		ReservationResponse reservationResponse = saveReservationResponseInDB(reservationResponseDto, tableToBookOn);
 		if(Objects.requireNonNull(reservationResponseDto).getSuccess()) {
 			incrementPatronymicId();
 		}
 		return reservationResponse;
-	}
-
-	// return true if message is blocking. With this message, we don't need to retry with another table
-	private boolean blockingMessage(String errorMessage) {
-		return BLOCKING_MESSAGES_TIME.stream().anyMatch(errorMessage::contains) || BLOCKING_MESSAGES_TOOMANYRESERVATION.contains(errorMessage);
 	}
 
 	private void incrementPatronymicId() {
@@ -119,7 +105,7 @@ public class ReservationParamRequest {
 		reservationBuilder.date(this.dateReservation);
 		reservationBuilder.startTime(this.startTime);
 		reservationBuilder.tableId(tableId);
-		reservationBuilder.numberOfPeople(this.numberOfPeople);
+		reservationBuilder.numberOfPeople(this.tableToBookOn.getCapacity());
 		reservationBuilder.hasStroller(false);
 		reservationBuilder.terracePreference("indoor");
 

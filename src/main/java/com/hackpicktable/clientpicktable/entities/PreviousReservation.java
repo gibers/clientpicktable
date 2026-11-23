@@ -7,10 +7,12 @@ import java.util.List;
 import java.util.UUID;
 
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.hackpicktable.clientpicktable.entities.jsonobjects.ParamReservationState;
 
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -18,32 +20,40 @@ import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import tools.jackson.databind.JsonNode;
+import lombok.ToString;
 
 @Entity
 @Table(name = "previous_reservation", schema = "public")
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@ToString
 public class PreviousReservation {
 
     @Id
-    @Column(name = "establishment_id", nullable = false, unique = true)
+    @Column(name = "establishment_id", nullable = false)
     @JsonProperty("establishment_id")
     private UUID establishmentId;
 
-    @OneToOne
-    @JoinColumn(name = "establishment_id", referencedColumnName = "id", insertable = false, updatable = false)
+    @OneToOne(optional = false)
+    @MapsId
+    @JoinColumn(name = "establishment_id", nullable = false)
     @JsonIgnore
     private Establishment establishment;
 
     @Column(name = "updated_at", nullable = false)
+    @UpdateTimestamp
     @JsonProperty("updated_at")
     private OffsetDateTime updatedAt;
 
@@ -62,15 +72,11 @@ public class PreviousReservation {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "param_reservation_state", nullable = false, columnDefinition = "json")
     @JsonProperty("param_reservation_state")
-    private JsonNode paramReservationState;
+    private ParamReservationState paramReservationState;
 
     @Column(name = "list_start_time", columnDefinition = "time[]")
     @JsonProperty("list_start_time")
-    private LocalTime[] listStartTime;
-
-    @Column(name = "index_previous_tisch")
-    @JsonProperty("index_previous_tisch")
-    private Integer indexPreviousTisch;
+    private List<LocalTime> listStartTime;
 
     @ElementCollection
     @CollectionTable(
@@ -79,6 +85,7 @@ public class PreviousReservation {
             joinColumns = @JoinColumn(name = "establishment_id", referencedColumnName = "establishment_id"))
     @OrderColumn(name = "previous_tisch_order")
     @JsonIgnore
+    @Builder.Default
     private List<PreviousTischEntry> previousTischEntries = new ArrayList<>();
 
 }
