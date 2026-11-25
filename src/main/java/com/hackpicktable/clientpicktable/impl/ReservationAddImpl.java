@@ -28,6 +28,7 @@ import com.hackpicktable.clientpicktable.impl.secondlevel.ListStartTimeSlotForTh
 import com.hackpicktable.clientpicktable.repositories.EstablishmentRepository;
 import com.hackpicktable.clientpicktable.repositories.LastPatronymicUsedRepository;
 import com.hackpicktable.clientpicktable.repositories.PatronymicRepository;
+import com.hackpicktable.clientpicktable.repositories.PreviousReservationRepository;
 import com.hackpicktable.clientpicktable.repositories.TischRepository;
 
 import jakarta.transaction.Transactional;
@@ -45,11 +46,14 @@ public class ReservationAddImpl {
 	private final PatronymicRepository patronymicRepository;
 	private final ListStartTimeSlotForThatDate listStartTimeSlotForThatDate;
 	private final PrepareListTablesBeforeReservation prepareListTablesBeforeReservation;
+	private final PreviousReservationRepository previousReservationRepository;
 
 	private final ObjectProvider<ReservationParamRequest> reservationParamRequestProvider;
 
-	public static final List<String> RESTAURANT_TO_EXCLUDE = List.of("jacques-restaurant", "leterminus", "ponte-vecchio", "le-pont-de-brent",
-			"citios", "le-self", "the-barista-lab", "lasuitepayerne", "zao-cafe", "ismael", "hotel-cailler");
+	public static final List<String> RESTAURANT_TO_EXCLUDE = List.of("jacques-restaurant");
+
+	//	public static final List<String> RESTAURANT_TO_EXCLUDE = List.of("jacques-restaurant", "leterminus", "ponte-vecchio", "le-pont-de-brent",
+//			"citios", "le-self", "the-barista-lab", "lasuitepayerne", "zao-cafe", "ismael", "hotel-cailler");
 
 	@Transactional
 	public ReservationResponse bookAReservationByScheduling() {
@@ -62,11 +66,9 @@ public class ReservationAddImpl {
 				.map(x -> this.tischRepository.findById(x.getTableId()).orElseThrow())
 				.toList();
 
-		List<LocalTime> listStartTimeSorted = estaWithReservation.getSecond().getListStartTime();
-
 		// 4. book a table:
 		LocalDate reservationDate = LocalDate.now().plusDays(1);
-		return this.loopOnTheSameEstablishment(estaWithReservation.getFirst(), tablesPerCapacity, listStartTimeSorted, patronymicToUse,
+		return this.loopOnTheSameEstablishmentWithParamReservation(estaWithReservation, tablesPerCapacity, patronymicToUse,
 				reservationDate);
 	}
 
@@ -115,14 +117,34 @@ public class ReservationAddImpl {
 		return reservationResponseDtoResult;
 	}
 
+	private ReservationResponse loopOnTheSameEstablishmentWithParamReservation(Pair<Establishment, PreviousReservation> estaWithPreviousReservation,
+			List<Tisch> listTableForThatEstablishment, Patronymic patronymicToUse, LocalDate reservationDate) {
+		ReservationResponse reservationResponseEntity = null;
+		List<LocalTime> listStartTimeSorted = estaWithPreviousReservation.getSecond().getListStartTime();
+
+		for (ParamReservationState reservationState = estaWithPreviousReservation.getSecond().getParamReservationState();
+			 conditionStopForWithParamReservation(estaWithPreviousReservation.getSecond(), listStartTimeSorted,
+					 Objects.requireNonNull(reservationState),
+					 reservationResponseEntity);
+			 reservationState = conditionNextStep(listTableForThatEstablishment.size(), reservationState,
+					 Objects.requireNonNull(reservationResponseEntity))) {
+
+			LocalTime localTimeReservation = listStartTimeSorted.get(reservationState.startTimeIndex());
+			Tisch tischToBook = listTableForThatEstablishment.get(reservationState.capacityIndex());
+
+			reservationResponseEntity = reservationParamRequestProvider.getObject().setParamAndLaunch(estaWithPreviousReservation.getFirst(),
+					patronymicToUse, localTimeReservation, reservationDate, tischToBook);
+		}
+		return reservationResponseEntity;
+	}
+
 	private ReservationResponse loopOnTheSameEstablishment(Establishment establishment,
 			List<Tisch> mapCapacityTablesForThatEstablishment, List<LocalTime> listStartTimeSorted,
 			Patronymic patronymicToUse, LocalDate reservationDate) {
-		//		List<Integer> capacities = new ArrayList<>(mapCapacityTablesForThatEstablishment.keySet());
 		ReservationResponse reservationResponseEntity = null;
 		ParamReservationState paramReservationState = new ParamReservationState(0, 0);
 		for (ParamReservationState reservationState = paramReservationState;
-			 conditionStopFor(mapCapacityTablesForThatEstablishment, listStartTimeSorted, Objects.requireNonNull(reservationState),
+			 conditionStopFor(listStartTimeSorted, Objects.requireNonNull(reservationState),
 					 reservationResponseEntity);
 			 reservationState = conditionNextStep(mapCapacityTablesForThatEstablishment.size(), reservationState,
 					 Objects.requireNonNull(reservationResponseEntity))) {
@@ -144,33 +166,60 @@ public class ReservationAddImpl {
 		if (BLOCKING_MESSAGES_TIME.stream().anyMatch(reservationResponseEntity.getErrorMessage()::contains)) {
 			return new ParamReservationState(0, initState.startTimeIndex() + 1);
 		}
+		// no increment in case of 429 or 403, because we need to try again.
 		if (BLOCKING_MESSAGES_TOOMANYRESERVATION.stream().anyMatch(reservationResponseEntity.getErrorMessage()::contains)) {
 			return new ParamReservationState(initState.capacityIndex(), initState.startTimeIndex());
 		}
 		if (initState.capacityIndex() >= numberOfTischForThatEstablishment -1) {
+			log.debug("Capacity index is greater or equal to the number of tables for that establishment, next occurency: {}",
+					initState.startTimeIndex() + 1);
 			return new ParamReservationState(0, initState.startTimeIndex() + 1);
 		}
 		return new ParamReservationState(initState.capacityIndex() + 1, initState.startTimeIndex());
 	}
 
-	private boolean conditionStopFor(List<Tisch> mapCapacityTablesForThatEstablishment, List<LocalTime> listStartTime, ParamReservationState reservationState,
+	private boolean conditionStopForWithParamReservation(PreviousReservation previousReservation, List<LocalTime> listStartTime, ParamReservationState reservationState,
 			ReservationResponse reservationResponseEntity) {
-		if (reservationState.capacityIndex() == 0 && reservationState.startTimeIndex() == 0) {
+		if ((reservationState.capacityIndex() == 0 && reservationState.startTimeIndex() == 0) || reservationResponseEntity == null) {
 			return true; // skip the first iteration
 		}
 		if (!reservationResponseEntity.getSuccess() && BLOCKING_MESSAGES_TOOMANYRESERVATION.contains(reservationResponseEntity.getErrorMessage())) {
-			// todo: save current state in DB: success -> false | error_type (429 or 200) -> 429 | paramReservation: startTimeIndex,
-			//  capacityIndex | listStartTime | capacities
+			saveCurrentStateInDB(reservationResponseEntity, reservationState, previousReservation);
 			return false;
 		}
 		boolean sizeExceeded = reservationState.startTimeIndex() >= listStartTime.size();
 		boolean endLoop = reservationResponseEntity.getSuccess().equals(true) || sizeExceeded;
 		if (endLoop) {
-			// todo: save current state in DB: success -> true | error_type (429 or 200) -> 200 | paramReservation: startTimeIndex,
-			//  capacityIndex | listStartTime | capacities
+			saveCurrentStateInDB(reservationResponseEntity, reservationState, previousReservation);
 			return false;
 		}
 		return true;
+	}
+
+	private boolean conditionStopFor(List<LocalTime> listStartTime, ParamReservationState reservationState,
+			ReservationResponse reservationResponseEntity) {
+		if (reservationState.capacityIndex() == 0 && reservationState.startTimeIndex() == 0) {
+			return true; // skip the first iteration
+		}
+		if (!reservationResponseEntity.getSuccess() && BLOCKING_MESSAGES_TOOMANYRESERVATION.contains(reservationResponseEntity.getErrorMessage())) {
+			return false;
+		}
+		boolean sizeExceeded = reservationState.startTimeIndex() >= listStartTime.size();
+		boolean endLoop = reservationResponseEntity.getSuccess().equals(true) || sizeExceeded;
+		return !endLoop;
+	}
+
+	private void saveCurrentStateInDB(ReservationResponse reservationResponseEntity, ParamReservationState reservationState,
+			PreviousReservation previousReservation) {
+		if (reservationResponseEntity.getSuccess()) {
+			previousReservation.setIntervalWithPrevious(Math.max((previousReservation.getIntervalWithPrevious() - 15), 15));
+		} else {
+			previousReservation.setIntervalWithPrevious(Math.min((previousReservation.getIntervalWithPrevious() + 15), 300));
+		}
+		previousReservation.setSuccess(reservationResponseEntity.getSuccess());
+		previousReservation.setParamReservationState(reservationState);
+		previousReservation.setPreviousHttpStatus(reservationResponseEntity.getHttpStatus());
+		this.previousReservationRepository.save(previousReservation);
 	}
 
 	private @NonNull Patronymic getPatronymicToUse(Establishment establishmentFromDB) {

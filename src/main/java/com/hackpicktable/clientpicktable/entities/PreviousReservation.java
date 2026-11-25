@@ -57,7 +57,7 @@ public class PreviousReservation {
     @JsonProperty("updated_at")
     private OffsetDateTime updatedAt;
 
-    @Column(name = "previous_http_status", nullable = false)
+    @Column(name = "previous_http_status")
     @JsonProperty("previous_http_status")
     private Integer previousHttpStatus;
 
@@ -65,7 +65,7 @@ public class PreviousReservation {
     @JsonProperty("interval_with_previous")
     private Integer intervalWithPrevious;
 
-    @Column(name = "success", nullable = false)
+    @Column(name = "success")
     @JsonProperty("success")
     private Boolean success;
 

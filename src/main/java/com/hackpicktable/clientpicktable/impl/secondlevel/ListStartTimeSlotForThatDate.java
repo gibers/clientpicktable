@@ -16,17 +16,14 @@ import com.hackpicktable.clientpicktable.repositories.ReservationSettingsReposit
 import com.hackpicktable.clientpicktable.repositories.TimeSlotRepository;
 
 import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class ListStartTimeSlotForThatDate {
 
 	private final ReservationSettingsRepository reservationSettingsRepository;
 	private final TimeSlotRepository timeSlotRepository;
-
-	public ListStartTimeSlotForThatDate(ReservationSettingsRepository reservationSettingsRepository, TimeSlotRepository timeSlotRepository) {
-		this.reservationSettingsRepository = reservationSettingsRepository;
-		this.timeSlotRepository = timeSlotRepository;
-	}
 
 	public @NonNull List<LocalTime> getListStartTimeSorted(Establishment establishment, LocalDate reservationDate) {
 		List<TimeSlot> timeSlotsForThatDay = getTimeSlotsForThatDay(reservationDate, establishment);
@@ -52,6 +49,7 @@ public class ListStartTimeSlotForThatDate {
 			timeIntervals.addAll(computeTimeIntervals(startTime, endTime, bookingIntervalMinutes));
 		});
 		return timeIntervals.stream()
+				.distinct()
 				.sorted(Comparator.naturalOrder())
 				.toList();
 	}

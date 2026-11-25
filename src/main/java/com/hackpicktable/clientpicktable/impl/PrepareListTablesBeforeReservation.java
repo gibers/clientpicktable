@@ -51,7 +51,7 @@ public class PrepareListTablesBeforeReservation {
 	public Pair<Establishment, PreviousReservation> execute() {
 		Pair<Establishment, List<LocalTime>> estaWithStartTimeList = seekTheNextEstablishmentWithStartTime();
 		PreviousReservation previousReservation = getOrInsertPreviousReservation(estaWithStartTimeList);
-		return Pair.of(estaWithStartTimeList.getFirst(), previousReservation);
+		return Pair.of(previousReservation.getEstablishment(), previousReservation);
 	}
 
 	private Pair<Establishment, List<LocalTime>> seekTheNextEstablishmentWithStartTime() {
@@ -65,7 +65,7 @@ public class PrepareListTablesBeforeReservation {
 		return Pair.of(establishment, startTimeListSorted);
 	}
 
-	private void firstInsertionInPreviousReservationAndPreviousTisch(
+	private void insertPreviousReservationAndPreviousTischInDB(
 			Pair<Establishment, List<LocalTime>> establishmentToBookOn,
 			PreviousReservation previousReservation) {
 		if (previousReservationPresent()) {
@@ -73,6 +73,7 @@ public class PrepareListTablesBeforeReservation {
 		}
 		List<Tisch> tablesPerCapacity = this.listTablesPerCapacityForThatEstablishment(establishmentToBookOn.getFirst());
 		extendPreviousEstablishmentWithListTables(previousReservation, tablesPerCapacity, establishmentToBookOn.getSecond());
+		this.entityManager.persist(previousReservation);
 	}
 
 	private Establishment nextSlugToBookOn(int indexSlug) {
@@ -117,13 +118,24 @@ public class PrepareListTablesBeforeReservation {
 	}
 
 	private PreviousReservation getOrInsertPreviousReservation(Pair<Establishment, List<LocalTime>> estaWithStartTimeList) {
-		if (previousReservationPresent()) {
-			PreviousReservation previousReservation = previousReservationRepository.findAll().stream().findFirst().orElseThrow();
-			assert previousReservation.getEstablishment() == estaWithStartTimeList.getFirst();
-			return previousReservation;
+		if (!previousReservationPresent()) {
+			return insertNewEntryInPreviousReservation(estaWithStartTimeList);
 		}
-		PreviousReservation previousReservation = buildPreviousEstablishment(estaWithStartTimeList.getFirst());
-		firstInsertionInPreviousReservationAndPreviousTisch(estaWithStartTimeList, previousReservation);
+		PreviousReservation previousReservationFromDB = previousReservationRepository.findAll().stream().findFirst().orElseThrow();
+		if (List.of(429, 403).contains(previousReservationFromDB.getPreviousHttpStatus())) {
+			return previousReservationFromDB;
+		} else if (previousReservationFromDB.getPreviousHttpStatus() == 200) {
+			log.debug("delete current PreviousReservation in DB");
+			this.previousReservationRepository.delete(previousReservationFromDB);
+			return insertNewEntryInPreviousReservation(estaWithStartTimeList);
+		} else {
+			throw new IllegalStateException("Unexpected HTTP status code: " + previousReservationFromDB.getPreviousHttpStatus());
+		}
+	}
+
+	private PreviousReservation insertNewEntryInPreviousReservation(Pair<Establishment, List<LocalTime>> estaWithStartTimeList) {
+		PreviousReservation previousReservation = buildEmptyPreviousEstablishment(estaWithStartTimeList.getFirst());
+		insertPreviousReservationAndPreviousTischInDB(estaWithStartTimeList, previousReservation);
 		return previousReservation;
 	}
 
@@ -132,7 +144,6 @@ public class PrepareListTablesBeforeReservation {
 		List<PreviousTischEntry> previousTischEntries = createPreviousTischEntries(tablesPerCapacity);
 		previousReservation.setPreviousTischEntries(previousTischEntries);
 		previousReservation.setListStartTime(startTimeListSorted);
-		this.entityManager.persist(previousReservation);
 	}
 
 	private @NonNull List<PreviousTischEntry> createPreviousTischEntries(List<Tisch> tablesPerCapacity) {
@@ -144,12 +155,10 @@ public class PrepareListTablesBeforeReservation {
 		return previousTischEntries;
 	}
 
-	private PreviousReservation buildPreviousEstablishment(Establishment establishment) {
+	private PreviousReservation buildEmptyPreviousEstablishment(Establishment establishment) {
 		return PreviousReservation.builder()
 				.establishment(establishment)
-				.previousHttpStatus(200)
 				.intervalWithPrevious(15)
-				.success(true)
 				.paramReservationState(new ParamReservationState(0, 0))
 				.build();
 	}

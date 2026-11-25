@@ -36,7 +36,8 @@ public class ReservationParamRequest {
 	public static final List<String> BLOCKING_MESSAGES_TIME = List.of(
 			"Cet horaire n'est plus disponible en ligne", "Créneau horaire invalide ou inactif", "Cet horaire a atteint sa limite de");
 	public static final List<String> BLOCKING_MESSAGES_TOOMANYRESERVATION = List.of(
-			"Trop de réservations ont été faites depuis cet appareil. Merci de contacter directement le restaurant.");
+			"Trop de réservations ont été faites depuis cet appareil. Merci de contacter directement le restaurant.",
+			"La vérification anti-robots n'a pas pu se faire. Veuillez recharger la page et réessayer.");
 
 	private final BookATableFromSupabase bookATableFromSupabase;
 	private final ReservationResponseMapper reservationResponseMapper;
