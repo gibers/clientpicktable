@@ -34,12 +34,12 @@ public class RefreshTablesInDBImpl {
 	@Transactional
 	public List<TischDto> refreshTablesForThisEstablishment(String establishmentSlug) {
 		// 1. get the establishment from DB:
-		Establishment establishmentZaoCafe = establishmentRepository.findBySlug(establishmentSlug).orElseThrow();
+		Establishment establishment = establishmentRepository.findBySlug(establishmentSlug).orElseThrow();
 		// 2. call the remote supabase Endpoint from that establishmentId:
-		List<TischDto> allTischDto = allTablesFromSupabase.getAllTables(establishmentZaoCafe.getId());
+		List<TischDto> allTischDto = allTablesFromSupabase.getAllTables(establishment.getId());
 		stopProcessIfSupabaseFailed(establishmentSlug, allTischDto);
 		// 3. empty table Tisch in DB, before to insert new data:
-		tischRepository.deleteAllByEstablishment(establishmentZaoCafe);
+		tischRepository.deleteAllByEstablishment(establishment);
 		// 4. save all TischDto in DB:
 		saveAllTischDto(allTischDto);
 		return allTischDto;
@@ -85,7 +85,6 @@ public class RefreshTablesInDBImpl {
 				.filter(x -> listTischDto.stream().noneMatch(y -> y.getId().equals(x.getId())))
 				.forEach(x -> {
 					log.debug("Deleting old Tisch: {} of establishment: {} in reservation_response and tisch", x, establishment.getName());
-					this.reservationResponseRepository.deleteAllByEstablishmentAndTisch(establishment, x);
 					this.tischRepository.delete(x);
 				});
 	}

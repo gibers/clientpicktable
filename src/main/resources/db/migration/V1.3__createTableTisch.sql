@@ -5,7 +5,7 @@ CREATE TABLE public.tisch
     capacity            integer not null,
     is_active           boolean not null,
     notes               text,
-    created_at          timestamp(6) with time zone not null,
+    created_at          timestamp(6) with time zone not null DEFAULT now(),
     establishment_id    uuid not null references public.establishment(id),
     is_bookable         boolean not null,
     allows_children     boolean not null,

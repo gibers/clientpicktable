@@ -15,6 +15,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -24,6 +26,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ReservationResponse {
 
     @Id
@@ -42,9 +46,8 @@ public class ReservationResponse {
     @JoinColumn(name = "patronymic_id", nullable = false)
     private Patronymic patronymic;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "tisch_id", nullable = false)
-    private Tisch tisch;
+    @Column(name = "tisch_id", nullable = false)
+    private UUID tischId;
 
     @Column(name = "date", nullable = false)
     private LocalDate date;
@@ -63,6 +66,9 @@ public class ReservationResponse {
 
     @Column(name = "error_message")
     private String errorMessage = "";
+
+    @Column(name = "public_ip", length = 20)
+    private String publicIp;
 
     @Column(name = "created_at")
     @CreationTimestamp

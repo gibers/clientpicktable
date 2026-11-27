@@ -30,7 +30,8 @@ public class BookATableFromSupabase {
 				.header("apikey", supabaseProperties.apiKey())
 				.body(request)
 				.retrieve()
-				.onStatus(HttpStatusCode::isError, (httpRequest, clientResponse) -> {})
+				.onStatus(HttpStatusCode::isError, (httpRequest, clientResponse) -> {
+				})
 				.toEntity(ReservationResponseDto.class);
 
 		ReservationResponseDto responseDto = response.getBody();

@@ -5,13 +5,14 @@ CREATE TABLE public.reservation_response
     reservation_id      uuid unique,
     establishment_id    uuid not null references public.establishment(id),
     patronymic_id		bigint not null references public.patronymic(id),
-    tisch_id			uuid not null references public.tisch(id),
+    tisch_id			uuid not null,
     date                date not null,
     start_time          time not null,
     number_of_people    integer not null,
     success             boolean not null,
     http_status         integer not null,
     error_message       text default '',
+    public_ip			varchar(20),
     created_at          timestamp(6) with time zone
 );
 

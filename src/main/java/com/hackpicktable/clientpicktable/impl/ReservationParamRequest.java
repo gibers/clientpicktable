@@ -96,7 +96,7 @@ public class ReservationParamRequest {
 	private ReservationResponse saveReservationResponseInDB(ReservationResponseDto reservationResponseDto, Tisch tableWithCapacityGte) {
 		ReservationResponse reservationResponse = reservationResponseMapper.toEntity(reservationResponseDto);
 		reservationResponse.setEstablishment(this.establishmentToBook);
-		reservationResponse.setTisch(tableWithCapacityGte);
+		reservationResponse.setTischId(tableWithCapacityGte.getId());
 		reservationResponse.setPatronymic(this.patronymicToUse);
 		return reservationResponseRepository.save(reservationResponse);
 	}

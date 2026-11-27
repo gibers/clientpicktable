@@ -14,9 +14,10 @@ import java.util.Optional;
 
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 
+import com.hackpicktable.clientpicktable.dtos.PreviousReservationDto;
+import com.hackpicktable.clientpicktable.dtos.mappers.PreviousReservationMapper;
 import com.hackpicktable.clientpicktable.entities.Establishment;
 import com.hackpicktable.clientpicktable.entities.LastPatronymicUsed;
 import com.hackpicktable.clientpicktable.entities.Patronymic;
@@ -47,6 +48,7 @@ public class ReservationAddImpl {
 	private final ListStartTimeSlotForThatDate listStartTimeSlotForThatDate;
 	private final PrepareListTablesBeforeReservation prepareListTablesBeforeReservation;
 	private final PreviousReservationRepository previousReservationRepository;
+	private final PreviousReservationMapper previousReservationMapper;
 
 	private final ObjectProvider<ReservationParamRequest> reservationParamRequestProvider;
 
@@ -56,19 +58,26 @@ public class ReservationAddImpl {
 //			"citios", "le-self", "the-barista-lab", "lasuitepayerne", "zao-cafe", "ismael", "hotel-cailler");
 
 	@Transactional
+	public PreviousReservationDto getPreviousReservationImpl() {
+		PreviousReservation previousReservation = prepareListTablesBeforeReservation.execute();
+		Establishment establishmentFromDB = establishmentRepository.findById(previousReservation.getEstablishment().getId()).orElseThrow();
+		return previousReservationMapper.toDto(previousReservation, establishmentFromDB.getSlug());
+	}
+
+	@Transactional
 	public ReservationResponse bookAReservationByScheduling() {
-		Pair<Establishment, PreviousReservation> estaWithReservation = prepareListTablesBeforeReservation.execute();
+		PreviousReservation previousReservation = prepareListTablesBeforeReservation.execute();
 
 		// 2. get next patronymic to use
-		Patronymic patronymicToUse = getPatronymicToUse(estaWithReservation.getFirst());
+		Patronymic patronymicToUse = getPatronymicToUse(previousReservation.getEstablishment());
 		// 3. get list of tables with capacity greater than or equal to the number of people
-		List<Tisch> tablesPerCapacity = estaWithReservation.getSecond().getPreviousTischEntries().stream()
+		List<Tisch> tablesPerCapacity = previousReservation.getPreviousTischEntries().stream()
 				.map(x -> this.tischRepository.findById(x.getTableId()).orElseThrow())
 				.toList();
 
 		// 4. book a table:
 		LocalDate reservationDate = LocalDate.now().plusDays(1);
-		return this.loopOnTheSameEstablishmentWithParamReservation(estaWithReservation, tablesPerCapacity, patronymicToUse,
+		return this.loopOnTheSameEstablishmentWithParamReservation(previousReservation, tablesPerCapacity, patronymicToUse,
 				reservationDate);
 	}
 
@@ -117,13 +126,13 @@ public class ReservationAddImpl {
 		return reservationResponseDtoResult;
 	}
 
-	private ReservationResponse loopOnTheSameEstablishmentWithParamReservation(Pair<Establishment, PreviousReservation> estaWithPreviousReservation,
+	private ReservationResponse loopOnTheSameEstablishmentWithParamReservation(PreviousReservation previousReservation,
 			List<Tisch> listTableForThatEstablishment, Patronymic patronymicToUse, LocalDate reservationDate) {
 		ReservationResponse reservationResponseEntity = null;
-		List<LocalTime> listStartTimeSorted = estaWithPreviousReservation.getSecond().getListStartTime();
+		List<LocalTime> listStartTimeSorted = previousReservation.getListStartTime();
 
-		for (ParamReservationState reservationState = estaWithPreviousReservation.getSecond().getParamReservationState();
-			 conditionStopForWithParamReservation(estaWithPreviousReservation.getSecond(), listStartTimeSorted,
+		for (ParamReservationState reservationState = previousReservation.getParamReservationState();
+			 conditionStopForWithParamReservation(previousReservation, listStartTimeSorted,
 					 Objects.requireNonNull(reservationState),
 					 reservationResponseEntity);
 			 reservationState = conditionNextStep(listTableForThatEstablishment.size(), reservationState,
@@ -132,7 +141,7 @@ public class ReservationAddImpl {
 			LocalTime localTimeReservation = listStartTimeSorted.get(reservationState.startTimeIndex());
 			Tisch tischToBook = listTableForThatEstablishment.get(reservationState.capacityIndex());
 
-			reservationResponseEntity = reservationParamRequestProvider.getObject().setParamAndLaunch(estaWithPreviousReservation.getFirst(),
+			reservationResponseEntity = reservationParamRequestProvider.getObject().setParamAndLaunch(previousReservation.getEstablishment(),
 					patronymicToUse, localTimeReservation, reservationDate, tischToBook);
 		}
 		return reservationResponseEntity;

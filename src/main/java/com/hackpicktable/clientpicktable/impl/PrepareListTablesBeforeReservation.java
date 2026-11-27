@@ -5,6 +5,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
@@ -37,6 +38,8 @@ public class PrepareListTablesBeforeReservation {
 	private final EntityManager entityManager;
 
 	private final List<Integer> listCapacityOrder = List.of(4, 3, 5, 2, 6, 1, 7); // 7 items
+	private List<String> distinctSlugs;
+	private int previousInterval = 0;
 
 	public PrepareListTablesBeforeReservation(TischRepository tischRepository, EstablishmentRepository establishmentRepository,
 			PreviousReservationRepository previousReservationRepository, ListStartTimeSlotForThatDate listStartTimeSlotForThatDate,
@@ -48,13 +51,41 @@ public class PrepareListTablesBeforeReservation {
 		this.entityManager = entityManager;
 	}
 
-	public Pair<Establishment, PreviousReservation> execute() {
-		Pair<Establishment, List<LocalTime>> estaWithStartTimeList = seekTheNextEstablishmentWithStartTime();
-		PreviousReservation previousReservation = getOrInsertPreviousReservation(estaWithStartTimeList);
-		return Pair.of(previousReservation.getEstablishment(), previousReservation);
+	public PreviousReservation execute() {
+		this. distinctSlugs = firstCheckControl();
+		return getOrInsertPreviousReservation();
 	}
 
-	private Pair<Establishment, List<LocalTime>> seekTheNextEstablishmentWithStartTime() {
+	private List<String> firstCheckControl() {
+		List<String> distinctSlugs = this.establishmentRepository.findDistinctSlugs()
+				.stream().filter(s -> !ReservationAddImpl.RESTAURANT_TO_EXCLUDE.contains(s)).toList();
+		if (distinctSlugs.isEmpty()) {
+			throw new IllegalStateException("No establishment found in table establishment");
+		}
+		long numberOfRow = previousReservationRepository.findAll().size();
+		if (numberOfRow > 1) {
+			throw new IllegalStateException("table previous_reservation should have maximum one row");
+		}
+		return distinctSlugs;
+	}
+
+	private PreviousReservation getOrInsertPreviousReservation() {
+		Optional<PreviousReservation> previousReservationFromDBOptional = previousReservationRepository.findAll().stream().findFirst();
+		if (previousReservationFromDBOptional.isEmpty() || Objects.equals(previousReservationFromDBOptional.get().getPreviousHttpStatus(), 200)) {
+			this.previousInterval = setPreviousInterval(previousReservationFromDBOptional);
+			return insertNewEntryInPreviousReservation();
+		} else if (previousReservationFromDBOptional.get().getPreviousHttpStatus() == null ||
+				List.of(429, 403, 400).contains(previousReservationFromDBOptional.get().getPreviousHttpStatus())) {
+			return previousReservationFromDBOptional.get();
+		}
+		throw new IllegalStateException("Unexpected HTTP status code: " + previousReservationFromDBOptional.get().getPreviousHttpStatus());
+	}
+
+	// all methods below are called when previousReservation.isEmpty() || previousReservation.getPreviousHttpStatus() == 200
+	// we could put them in a separated class.
+
+	// method3
+	private Pair<Establishment, List<LocalTime>> lookUntilNextEstaHasSomeStartTime() {
 		Establishment establishment;
 		int indexSlug = 0;
 		List<LocalTime> startTimeListSorted;
@@ -65,45 +96,39 @@ public class PrepareListTablesBeforeReservation {
 		return Pair.of(establishment, startTimeListSorted);
 	}
 
+	// method7
 	private void insertPreviousReservationAndPreviousTischInDB(
 			Pair<Establishment, List<LocalTime>> establishmentToBookOn,
 			PreviousReservation previousReservation) {
-		if (previousReservationPresent()) {
-			throw new AssertionError();
-		}
 		List<Tisch> tablesPerCapacity = this.listTablesPerCapacityForThatEstablishment(establishmentToBookOn.getFirst());
 		extendPreviousEstablishmentWithListTables(previousReservation, tablesPerCapacity, establishmentToBookOn.getSecond());
+		this.previousReservationRepository.deleteAll();
 		this.entityManager.persist(previousReservation);
 	}
 
+	// method4
 	private Establishment nextSlugToBookOn(int indexSlug) {
-		List<String> distinctSlugs = this.establishmentRepository.findDistinctSlugs()
-				.stream().filter(s -> !ReservationAddImpl.RESTAURANT_TO_EXCLUDE.contains(s)).toList();
-		if (distinctSlugs.isEmpty()) {
-			throw new IllegalStateException("No establishment found in table establishment");
-		}
 		if (distinctSlugs.size() <= indexSlug) {
 			throw new IllegalStateException(" indexSlug greater than distinctSlugs size");
 		}
 		long numberOfRow = previousReservationRepository.findAll().size();
-		if (numberOfRow > 1) {
-			throw new IllegalStateException("table previous_reservation should have maximum one row");
-		} else if (numberOfRow == 0) {
+		if (numberOfRow == 0) {
 			return this.establishmentRepository.findBySlug(distinctSlugs.get(indexSlug)).orElseThrow();
-		} else {
-			PreviousReservation previousReservation = previousReservationRepository.findAll().stream().findFirst().orElseThrow();
-			String previousSlug = previousReservation.getEstablishment().getSlug();
-			int i = distinctSlugs.indexOf(previousSlug);
-			String slug = distinctSlugs.get((i + 1 + indexSlug) % distinctSlugs.size());
-			return this.establishmentRepository.findBySlug(slug).orElseThrow();
 		}
+		PreviousReservation previousReservation = previousReservationRepository.findAll().stream().findFirst().orElseThrow();
+		String previousSlug = previousReservation.getEstablishment().getSlug();
+		int i = distinctSlugs.indexOf(previousSlug);
+		String slug = distinctSlugs.get((i + 1 + indexSlug) % distinctSlugs.size());
+		return this.establishmentRepository.findBySlug(slug).orElseThrow();
 	}
 
+	// method5
 	private @NonNull List<LocalTime> listStartTimeSorted(Establishment establishmentToBookOn) {
 		LocalDate reservationDate = LocalDate.now().plusDays(1);
 		return listStartTimeSlotForThatDate.getListStartTimeSorted(establishmentToBookOn, reservationDate);
 	}
 
+	// method8
 	private List<Tisch> listTablesPerCapacityForThatEstablishment (Establishment establishment) {
 		List<Tisch> allByEstablishment = tischRepository.findAllByEstablishment(establishment);
 		return listCapacityOrder.stream()
@@ -112,33 +137,25 @@ public class PrepareListTablesBeforeReservation {
 				.toList();
 	}
 
-	private boolean previousReservationPresent() {
-		long numberOfRow = previousReservationRepository.findAll().size();
-		return numberOfRow != 0;
+	// methode1
+	private int setPreviousInterval(Optional<PreviousReservation> previousReservationFromDBOptional) {
+		if (previousReservationFromDBOptional.isEmpty())
+			return 30;
+		if (previousReservationFromDBOptional.get().getPreviousHttpStatus() == 200) {
+			return previousReservationFromDBOptional.get().getIntervalWithPrevious();
+		}
+		throw new IllegalStateException("this method should be called just when previousReservation is empty or 200: " + previousReservationFromDBOptional.get());
 	}
 
-	private PreviousReservation getOrInsertPreviousReservation(Pair<Establishment, List<LocalTime>> estaWithStartTimeList) {
-		if (!previousReservationPresent()) {
-			return insertNewEntryInPreviousReservation(estaWithStartTimeList);
-		}
-		PreviousReservation previousReservationFromDB = previousReservationRepository.findAll().stream().findFirst().orElseThrow();
-		if (List.of(429, 403).contains(previousReservationFromDB.getPreviousHttpStatus())) {
-			return previousReservationFromDB;
-		} else if (previousReservationFromDB.getPreviousHttpStatus() == 200) {
-			log.debug("delete current PreviousReservation in DB");
-			this.previousReservationRepository.delete(previousReservationFromDB);
-			return insertNewEntryInPreviousReservation(estaWithStartTimeList);
-		} else {
-			throw new IllegalStateException("Unexpected HTTP status code: " + previousReservationFromDB.getPreviousHttpStatus());
-		}
-	}
-
-	private PreviousReservation insertNewEntryInPreviousReservation(Pair<Establishment, List<LocalTime>> estaWithStartTimeList) {
+	// method2
+	private PreviousReservation insertNewEntryInPreviousReservation() {
+		Pair<Establishment, List<LocalTime>> estaWithStartTimeList = lookUntilNextEstaHasSomeStartTime();
 		PreviousReservation previousReservation = buildEmptyPreviousEstablishment(estaWithStartTimeList.getFirst());
 		insertPreviousReservationAndPreviousTischInDB(estaWithStartTimeList, previousReservation);
 		return previousReservation;
 	}
 
+	// method9
 	private void extendPreviousEstablishmentWithListTables(PreviousReservation previousReservation, List<Tisch> tablesPerCapacity,
 			List<LocalTime> startTimeListSorted) {
 		List<PreviousTischEntry> previousTischEntries = createPreviousTischEntries(tablesPerCapacity);
@@ -146,6 +163,7 @@ public class PrepareListTablesBeforeReservation {
 		previousReservation.setListStartTime(startTimeListSorted);
 	}
 
+	// method10
 	private @NonNull List<PreviousTischEntry> createPreviousTischEntries(List<Tisch> tablesPerCapacity) {
 		List<PreviousTischEntry> previousTischEntries = new ArrayList<>();
 		tablesPerCapacity.forEach(t -> previousTischEntries.add(PreviousTischEntry.builder()
@@ -155,10 +173,11 @@ public class PrepareListTablesBeforeReservation {
 		return previousTischEntries;
 	}
 
+	// method6
 	private PreviousReservation buildEmptyPreviousEstablishment(Establishment establishment) {
 		return PreviousReservation.builder()
 				.establishment(establishment)
-				.intervalWithPrevious(15)
+				.intervalWithPrevious(this.previousInterval - 15)
 				.paramReservationState(new ParamReservationState(0, 0))
 				.build();
 	}
