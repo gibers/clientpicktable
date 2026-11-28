@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.hackpicktable.clientpicktable.entities.ReservationResponse;
 import com.hackpicktable.clientpicktable.impl.ReservationAddImpl;
+import com.hackpicktable.clientpicktable.impl.ReservationToSaveImpl;
 
 @WebMvcTest(ReservationController.class)
 class ReservationControllerIntegrationTest {
@@ -25,6 +26,9 @@ class ReservationControllerIntegrationTest {
 
     @MockitoBean
     private ReservationAddImpl reservationAddImpl;
+
+    @MockitoBean
+    private ReservationToSaveImpl reservationToSaveImpl;
 
     @Test
     void bookTestForPreviousReservationReturnsList() throws Exception {

@@ -52,7 +52,7 @@ public class ReservationAddImpl {
 
 	private final ObjectProvider<ReservationParamRequest> reservationParamRequestProvider;
 
-	public static final List<String> RESTAURANT_TO_EXCLUDE = List.of("jacques-restaurant");
+	public static final List<String> RESTAURANT_TO_EXCLUDE = List.of("jacques-restaurant", "lasuitepayerne");
 
 	//	public static final List<String> RESTAURANT_TO_EXCLUDE = List.of("jacques-restaurant", "leterminus", "ponte-vecchio", "le-pont-de-brent",
 //			"citios", "le-self", "the-barista-lab", "lasuitepayerne", "zao-cafe", "ismael", "hotel-cailler");
